@@ -13,10 +13,13 @@ struct MyPalApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                AIContentView()
+            Group {
+                NavigationStack {
+                    AIContentView()
+                }
             }
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environmentObject(Settings())
         }
     }
 }

@@ -19,20 +19,15 @@ struct AIChatView: View {
 
     @State private var inputText = "";
     
-    @FetchRequest(sortDescriptors: [
-        SortDescriptor(\.timestamp, order: .forward)
-    ], animation: .default)
-    var messages: FetchedResults<Message>
+    @FetchRequest private var messages: FetchedResults<Message>
     
-    let openAIViewModel = OpenAIViewModel.shared;
-    let coreDataUtils = CoreDataUtils.shared;
-    let session = LanguageModelSession()
-    let options = GenerationOptions(temperature: 2.0)
-    let model = SystemLanguageModel.default
-    
-    var pal: Pal
+    let foundationModel = FoundationModel.shared
+    let coreDataUtils = CoreDataUtils.shared
+
+    var pal: Pal;
 
     var body: some View {
+        
         ScrollViewReader { proxy in
             
             ScrollView {
@@ -48,10 +43,10 @@ struct AIChatView: View {
                     proxy.scrollTo(messages.last?.id, anchor: .bottom)
                 }
             }
+            
         }.onTapGesture {
             UIApplication.shared.endEditing()
         }
-
         
         Divider()
         HStack(spacing: 12) {
@@ -71,14 +66,14 @@ struct AIChatView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 
                 HStack {
-                    Text("AI Check: ")
-                    switch model.availability {
-                    case .available:
-                        Image(systemName: "checkmark.circle")
-                            .foregroundStyle(.green)
-                    case .unavailable(_):
-                        Image(systemName: "xmark").foregroundStyle(.red)
+                    Text(pal.name ?? "")
+                    
+                    Button {
+                        coreDataUtils.deleteAll(entityName: "Pal")
+                    } label: {
+                        Text("Delete")
                     }
+                    
                 }.padding(.horizontal)
 
             }
@@ -86,22 +81,36 @@ struct AIChatView: View {
         .toolbarVisibility(.hidden, for: .tabBar)
         
     }
+    
+    init(pal: Pal) {
+        
+        self.pal = pal
+        
+        var predicate: NSPredicate? = nil
+        
+        if let id = pal.id?.uuidString {
+            
+            predicate = NSPredicate(format: "palId == %@", id)
+        }
+        
+        _messages = FetchRequest<Message>(
+            entity: Message.entity(),
+            sortDescriptors: [NSSortDescriptor(keyPath: \Message.timestamp, ascending: true)],
+            predicate: predicate
+        )
+        
+    }
 
     func sendMessage() {
         
         guard !inputText.isEmpty else { return }
 
-        coreDataUtils.insertResponse(reply: inputText)
-
-        Task {
-
-            let response = try await session.respond(to: inputText, options: options)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                coreDataUtils.insertAsAiResponse(reply: response.content)
-            }
-            
-        }
+        foundationModel
+            .sendMessage(
+                to: inputText,
+                instruction: pal.instruction ?? "",
+                palId: pal.id?.uuidString
+            )
 
         inputText = "";
         

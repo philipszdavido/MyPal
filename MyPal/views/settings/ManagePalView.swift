@@ -12,6 +12,8 @@ struct ManagePalView: View {
     @Environment(\.managedObjectContext) var managedObjectContext
     @Environment(\.dismiss) var dismiss;
     
+    let coreDataUtils = CoreDataUtils.shared
+
     @ObservedObject var pal: Pal
 
     var body: some View {
@@ -61,6 +63,13 @@ struct ManagePalView: View {
                         dismiss()
                     } label: {
                         Text("Delete").foregroundStyle(.red)
+                    }
+
+                    Button {
+                        coreDataUtils.clearPalMessage(pal: pal)
+                        dismiss()
+                    } label: {
+                        Text("Delete Messages").foregroundStyle(.red)
                     }
 
                     Button {
