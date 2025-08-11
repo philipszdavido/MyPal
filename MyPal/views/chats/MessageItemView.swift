@@ -12,7 +12,6 @@ struct MessageItemView: View {
     @ObservedObject var message: Message;
     
     let coreDataUtils = CoreDataUtils.shared;
-    let markdownStreamParser = MarkdownStreamParser.shared
 
     var body: some View {
         
