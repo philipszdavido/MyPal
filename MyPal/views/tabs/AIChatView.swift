@@ -38,17 +38,25 @@ struct AIChatView: View {
                     }
                 }
             }
-            .onChange(of: messages.count) { _ in
+            .onChange(of: messages.count) { _, _ in
                 withAnimation {
                     proxy.scrollTo(messages.last?.id, anchor: .bottom)
                 }
             }
+            .onAppear(perform: {
+
+                withAnimation {
+                    proxy.scrollTo(messages.last?.id, anchor: .bottom)
+                }
+
+            })
             
         }.onTapGesture {
             UIApplication.shared.endEditing()
         }
         
         Divider()
+        
         HStack(spacing: 12) {
             TextField("Type a message", text: $inputText)
                 .padding(12)
@@ -67,15 +75,8 @@ struct AIChatView: View {
                 
                 HStack {
                     Text(pal.name ?? "")
-                    
-                    Button {
-                        coreDataUtils.deleteAll(entityName: "Pal")
-                    } label: {
-                        Text("Delete")
-                    }
-                    
                 }.padding(.horizontal)
-
+                
             }
         }
         .toolbarVisibility(.hidden, for: .tabBar)
@@ -107,7 +108,7 @@ struct AIChatView: View {
 
         foundationModel
             .sendMessage(
-                to: inputText,
+                inputText,
                 instruction: pal.instruction ?? "",
                 palId: pal.id?.uuidString
             )
@@ -115,6 +116,7 @@ struct AIChatView: View {
         inputText = "";
         
     }
+    
 }
 
 #Preview {
@@ -124,32 +126,4 @@ struct AIChatView: View {
         .environment(
             \.managedObjectContext,
              PersistenceController.preview.container.viewContext)
-}
-
-
-struct MessageItemView: View {
-    
-    @ObservedObject var message: Message;
-    
-    var body: some View {
-        HStack {
-
-            if message.isAi == false { Spacer() }
-
-            if let content = message.content {
-                Text(content)
-                    .padding()
-                    .background(message.isAi ? Color.gray.opacity(0.5) : Color.blue )
-                    .cornerRadius(16)
-                    .frame(alignment: message.isAi ? .trailing : .leading)
-                    .foregroundStyle(.white)
-            }
-            
-            if message.isAi == true { Spacer() }
-            
-        }
-        .padding(.horizontal)
-        .id(message.id)
-
-    }
 }

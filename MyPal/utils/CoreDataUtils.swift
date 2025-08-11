@@ -45,6 +45,25 @@ class CoreDataUtils {
         }
     }
     
+    func streamAiMessage(palId: String) -> Message {
+        
+        let response = Message(context: managedObjectContext)
+        response.id = UUID()
+        response.content = ""
+        response.isAi = true
+        response.timestamp = .now
+        response.palId = palId
+        response.isPartial = true
+
+        do {
+            try managedObjectContext.save()
+        } catch {
+            print("Core Data Save Error: \(error)")
+        }
+        
+        return response
+    }
+    
     func insertPal(name: String, instruction: String) {
         
         // check for name in Pal core data
@@ -70,6 +89,35 @@ class CoreDataUtils {
         } catch {}
     }
     
+    func deleteMessage(id: UUID) {
+        
+        let fetchRequest: NSFetchRequest<Message> = Message.fetchRequest()
+        
+        fetchRequest.predicate = NSPredicate(
+            format: "id == %@",
+            id as CVarArg
+        )
+        
+        do {
+            
+            let existing = try managedObjectContext.fetch(fetchRequest)
+            
+            for message in existing {
+                
+                managedObjectContext.delete(message)
+                
+            }
+            
+            try managedObjectContext.save();
+
+        } catch {
+
+            print("Error deleting: \(error)")
+
+        }
+        
+    }
+    
     func clearPalMessage(pal: Pal) {
 
         Task {
@@ -90,7 +138,9 @@ class CoreDataUtils {
                     managedObjectContext.delete(message)
                 }
                 
-            } catch {}
+            } catch {
+                print("Error deleting \(error)")
+            }
         }
 
     }

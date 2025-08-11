@@ -8,11 +8,13 @@
 import SwiftUI
 
 struct CheckInView: View {
+    
     @AppStorage("lastCheckInDate") var lastCheckInDate: String = ""
     @State private var input = ""
     @State private var submitted = false
 
     var body: some View {
+        
         VStack(spacing: 20) {
             Text("Daily Check-in")
                 .font(.title)
@@ -28,6 +30,7 @@ struct CheckInView: View {
                 Text("You've checked in today ✅")
             }
         }.padding()
+        
     }
 
     func currentDateString() -> String {

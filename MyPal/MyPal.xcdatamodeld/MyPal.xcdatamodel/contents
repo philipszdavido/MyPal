@@ -4,6 +4,7 @@
         <attribute name="content" optional="YES" attributeType="String"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isAi" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isPartial" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="palId" optional="YES" attributeType="String"/>
         <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
