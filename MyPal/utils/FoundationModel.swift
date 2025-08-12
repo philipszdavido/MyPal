@@ -62,7 +62,7 @@ class FoundationModel: ObservableObject {
                 
                 message.isPartial = false
                                 
-                // try coreDataUtils.managedObjectContext.save()
+                try coreDataUtils.managedObjectContext.save()
                 
             } catch {
                 

@@ -49,7 +49,7 @@ class CoreDataUtils {
         
         let response = Message(context: managedObjectContext)
         response.id = UUID()
-        response.content = ""
+        response.content = "**Typing**..."
         response.isAi = true
         response.timestamp = .now
         response.palId = palId

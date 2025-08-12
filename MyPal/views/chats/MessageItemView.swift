@@ -12,6 +12,7 @@ struct MessageItemView: View {
     @ObservedObject var message: Message;
     
     let coreDataUtils = CoreDataUtils.shared;
+    let parser = MarkdownParser.shared
 
     var body: some View {
         
@@ -20,13 +21,23 @@ struct MessageItemView: View {
             if message.isAi == false { Spacer() }
 
             if let content = message.content {
-
-                Text(content)
-                    .padding()
-                    .background(message.isAi ? Color.gray.opacity(0.5) : Color.blue )
-                    .cornerRadius(16)
-                    .frame(alignment: message.isAi ? .trailing : .leading)
-                    .foregroundStyle(.white)
+                
+                parser.parse(text: content).enumerated().reduce(Text("")) { result, pair in
+                    
+                    let (_, markdownToken) = pair
+                    
+                    let textPart = markdownToken.type == .bold ? Text(markdownToken.value).bold() : Text(
+                        markdownToken.value
+                    )
+                    
+                    return result + textPart;
+                    
+                }
+                .padding()
+                .background(message.isAi ? Color.gray.opacity(0.5) : Color.blue )
+                .cornerRadius(16)
+                .frame(alignment: message.isAi ? .trailing : .leading)
+                .foregroundStyle(.white)
                 
             }
             

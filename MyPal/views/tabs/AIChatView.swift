@@ -43,6 +43,11 @@ struct AIChatView: View {
                     proxy.scrollTo(messages.last?.id, anchor: .bottom)
                 }
             }
+            .onChange(of: messages.last?.content?.count) { _, _ in
+                withAnimation {
+                    proxy.scrollTo(messages.last?.id, anchor: .bottom)
+                }
+            }
             .onAppear(perform: {
 
                 withAnimation {
