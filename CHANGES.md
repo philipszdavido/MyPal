@@ -27,3 +27,28 @@ CheckInView, DiscussionView, ReminderView, Settings.swift, printUtils.swift, Cor
 ## Still needed from you
 - App icon artwork (AppIcon set has no images) and a Team/provisioning check.
 - Not compiled in my environment – build once in Xcode 26 and fix any SDK nits.
+
+## Round 2: icon + memory
+- App icon (light / dark / tinted) installed in `AppIcon.appiconset`; master copy is `MyPal-icon-1024.png`.
+- Pal memory is now three layers:
+  1. Live `LanguageModelSession` per pal (full in-context turn history).
+  2. Recent window: the last 10 messages are replayed verbatim whenever a session is rebuilt
+     (relaunch, edited instructions, deleted message, or automatically every 5 turns, before the ~4K-token window fills).
+  3. Long-term memory (`Core/MemoryStore`): a rolling summary + up to 12 lasting facts about the person, built in the
+     background by a second model session using guided generation (`MemoryUpdate`). Stored per pal as JSON in
+     Application Support, injected into the pal's instructions together with today's date.
+- Pal editor → Memory section shows what the pal knows and lets you forget it. Clearing a conversation also wipes memory.
+
+## Round 3: ideas.md first sprint
+- **Pal identity**: optional emoji + color per pal (editor → Appearance). Core Data model is now versioned
+  (`MyPal 2.xcdatamodel`, adds `Pal.emoji` / `Pal.colorName`; lightweight migration). The person's bubbles and send button use the pal's color.
+- **Editable memory**: `PalMemory.pinnedFacts` are facts the person added (editor field or "Remember This" on a message);
+  the summarizer never removes them. Any fact can be swiped away. Edits go through `PalActions.editMemory`.
+- **Suggestions**: conversation starters in an empty chat and three follow-up chips after each reply
+  (`@Generable ReplySuggestions`). Toggle in Settings.
+- **Voice**: mic button in the composer (on-device `SFSpeechRecognizer` when supported), "Read Aloud" on replies,
+  and an optional auto-read setting. Adds microphone + speech recognition usage strings.
+- **Siri / Shortcuts**: `AskPalIntent` ("Ask Mentor in MyPal") runs through the pal's `ChatViewModel`, so the
+  exchange is saved and remembered like a normal chat.
+- **Chat actions**: Regenerate the newest reply, Edit & Resend the newest prompt, Export Conversation as Markdown.
+- Removed unused `Core/Instructions.swift`.

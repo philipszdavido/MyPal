@@ -20,7 +20,7 @@ struct ManagePalsView: View {
             ForEach(pals) { pal in
                 Button { palToEdit = pal } label: {
                     HStack(spacing: 12) {
-                        PalAvatar(name: pal.name ?? "", size: 40)
+                        PalAvatar(pal: pal, size: 40)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(pal.name ?? "Untitled").font(.body).foregroundStyle(.primary)
                             if let instruction = pal.instruction, !instruction.isEmpty {

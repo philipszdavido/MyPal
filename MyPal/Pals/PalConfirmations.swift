@@ -33,7 +33,7 @@ private struct PalClearConfirmation: ViewModifier {
                 Task { await PalActions.clearMessages(of: target) }
             }
         } message: { target in
-            Text("All messages with \(target.name ?? "this pal") will be deleted. This can't be undone.")
+            Text("All messages with \(target.name ?? "this pal") and its memory will be deleted. This can't be undone.")
         }
     }
 }

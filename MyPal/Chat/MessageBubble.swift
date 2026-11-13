@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension View {
-    /// Shared bubble chrome: accent for the person, secondary fill for the pal, with a tighter "tail" corner.
+    /// Shared bubble chrome: the pal's tint for the person, secondary fill for the pal, with a tighter "tail" corner.
     func chatBubble(isUser: Bool) -> some View {
         self
             .padding(.horizontal, 14)
@@ -15,20 +15,34 @@ extension View {
                     topTrailingRadius: 20,
                     style: .continuous
                 )
-                .fill(isUser ? Color.accentColor : Color(.secondarySystemBackground))
+                .fill(isUser ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.secondarySystemBackground)))
             )
     }
 }
 
+enum MessageAction {
+    case delete, remember, readAloud, regenerate, editAndResend
+}
+
 struct MessageBubble: View {
     let message: ChatMessage
-    let onDelete: (ChatMessage) -> Void
+    /// Regenerate is offered on the newest reply, edit-and-resend on the newest prompt.
+    var isLatest = false
+    let onAction: (MessageAction) -> Void
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    private var speaker = Speaker.shared
+
+    init(message: ChatMessage, isLatest: Bool = false, onAction: @escaping (MessageAction) -> Void) {
+        self.message = message
+        self.isLatest = isLatest
+        self.onAction = onAction
+    }
 
     var body: some View {
         let isUser = message.role == .user
         let gap: CGFloat = sizeClass == .regular ? 120 : 48
+        let isSpeaking = speaker.speakingId == message.id
 
         HStack(spacing: 0) {
             if isUser { Spacer(minLength: gap) }
@@ -41,6 +55,17 @@ struct MessageBubble: View {
                 }
             }
             .chatBubble(isUser: isUser)
+            .overlay(alignment: .bottomTrailing) {
+                if isSpeaking {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.tint)
+                        .symbolEffect(.variableColor.iterative, isActive: true)
+                        .padding(6)
+                        .background(Circle().fill(.background))
+                        .offset(x: 8, y: 8)
+                }
+            }
 
             if !isUser { Spacer(minLength: gap) }
         }
@@ -56,13 +81,61 @@ struct MessageBubble: View {
             ShareLink(item: message.text) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
+            if isUser {
+                Button { onAction(.remember) } label: {
+                    Label("Remember This", systemImage: "pin")
+                }
+                if isLatest {
+                    Button { onAction(.editAndResend) } label: {
+                        Label("Edit & Resend", systemImage: "pencil")
+                    }
+                }
+            } else {
+                Button { onAction(.readAloud) } label: {
+                    if isSpeaking {
+                        Label("Stop Reading", systemImage: "speaker.slash")
+                    } else {
+                        Label("Read Aloud", systemImage: "speaker.wave.2")
+                    }
+                }
+                if isLatest {
+                    Button { onAction(.regenerate) } label: {
+                        Label("Regenerate", systemImage: "arrow.clockwise")
+                    }
+                }
+            }
             Divider()
             Button(role: .destructive) {
-                onDelete(message)
+                onAction(.delete)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
+    }
+}
+
+/// Tappable suggestions above the composer: starters in an empty chat, follow-ups after a reply.
+struct SuggestionChips: View {
+    let suggestions: [String]
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(suggestions, id: \.self) { suggestion in
+                    Button { onSelect(suggestion) } label: {
+                        Text(suggestion)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                            .padding(.horizontal, 4)
+                    }
+                    .buttonStyle(.glass)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+        .scrollIndicators(.hidden)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
 
@@ -164,7 +237,7 @@ struct EmptyChatView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            PalAvatar(name: pal.name ?? "", size: 72)
+            PalAvatar(pal: pal, size: 72)
             Text(pal.name ?? "").font(.title2.bold())
             if let instruction = pal.instruction, !instruction.isEmpty {
                 Text(instruction)
@@ -173,7 +246,7 @@ struct EmptyChatView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(4)
             }
-            Text("Say hello to get started.")
+            Text("Say hello, or pick a suggestion below.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         }

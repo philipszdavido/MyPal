@@ -10,6 +10,8 @@ struct ChatView: View {
     @State private var showClearConfirmation = false
     @State private var showEditor = false
     @FocusState private var isComposerFocused: Bool
+    @AppStorage(Preferences.showSuggestionsKey) private var showSuggestions = true
+    @AppStorage(Preferences.readRepliesAloudKey) private var readRepliesAloud = false
 
     @Environment(ModelAvailability.self) private var availability
     @Environment(\.dismiss) private var dismiss
@@ -42,16 +44,25 @@ struct ChatView: View {
         }
         .onDisappear {
             isComposerFocused = false
+            Speaker.shared.stop()
             model.trim()
         }
+        .onChange(of: model.receivedCount) { _, _ in
+            if readRepliesAloud, let reply = model.messages.last, reply.role == .assistant {
+                Speaker.shared.speak(reply)
+            }
+        }
+        .overlay(alignment: .top) { noticeBanner }
+        .tint(pal.tint)
         .sensoryFeedback(.impact(weight: .light), trigger: model.sentCount)
         .sensoryFeedback(.success, trigger: model.receivedCount)
+        .sensoryFeedback(.selection, trigger: model.notice)
         .confirmationDialog("Clear this conversation?", isPresented: $showClearConfirmation, titleVisibility: .visible) {
             Button("Clear Conversation", role: .destructive) {
                 Task { await PalActions.clearMessages(of: pal) }
             }
         } message: {
-            Text("All messages with \(pal.name ?? "this pal") will be deleted. This can't be undone.")
+            Text("All messages with \(pal.name ?? "this pal") and its memory will be deleted. This can't be undone.")
         }
         .sheet(isPresented: $showEditor) {
             NavigationStack { PalEditorView(mode: .edit(pal)) }
@@ -126,7 +137,53 @@ struct ChatView: View {
         case .day(let date):
             DayHeader(date: date)
         case .message(let message):
-            MessageBubble(message: message) { model.delete($0) }
+            MessageBubble(message: message, isLatest: isLatest(message)) { action in
+                handle(action, on: message)
+            }
+        }
+    }
+
+    private func isLatest(_ message: ChatMessage) -> Bool {
+        switch message.role {
+        case .assistant: message.id == model.messages.last?.id && model.canRegenerate
+        case .user: !model.isReplying && message.id == model.messages.last(where: { $0.role == .user })?.id
+        }
+    }
+
+    private func handle(_ action: MessageAction, on message: ChatMessage) {
+        switch action {
+        case .delete:
+            if Speaker.shared.speakingId == message.id { Speaker.shared.stop() }
+            model.delete(message)
+        case .remember:
+            model.remember(message)
+        case .readAloud:
+            Speaker.shared.toggle(message)
+        case .regenerate:
+            Speaker.shared.stop()
+            model.regenerate()
+        case .editAndResend:
+            if let text = model.takeBackLastPrompt() {
+                draft = text
+                isComposerFocused = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var noticeBanner: some View {
+        if let notice = model.notice {
+            Label(notice.text, systemImage: "pin.fill")
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .glassEffect(.regular, in: Capsule())
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: notice.id) {
+                    try? await Task.sleep(for: .seconds(2))
+                    withAnimation(.snappy) { model.clearNotice() }
+                }
         }
     }
 
@@ -158,6 +215,9 @@ struct ChatView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(.secondarySystemBackground)))
             }
+            if showSuggestions, draft.isEmpty, !model.isReplying, !model.suggestions.isEmpty, availability.isAvailable {
+                SuggestionChips(suggestions: model.suggestions) { model.send($0) }
+            }
             ComposerView(
                 text: $draft,
                 isFocused: $isComposerFocused,
@@ -172,6 +232,7 @@ struct ChatView: View {
         .padding(.top, 4)
         .frame(maxWidth: Theme.contentMaxWidth)
         .frame(maxWidth: .infinity)
+        .animation(.snappy, value: model.suggestions)
     }
 
     // MARK: Toolbar
@@ -180,7 +241,7 @@ struct ChatView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .principal) {
             HStack(spacing: 8) {
-                PalAvatar(name: pal.name ?? "", size: 28)
+                PalAvatar(pal: pal, size: 28)
                 Text(pal.name ?? "Chat").font(.headline).lineLimit(1)
             }
             .accessibilityElement(children: .combine)
@@ -189,6 +250,15 @@ struct ChatView: View {
             Menu {
                 Button { showEditor = true } label: {
                     Label("Edit Pal", systemImage: "pencil")
+                }
+                if let palId = pal.id {
+                    ShareLink(
+                        item: ConversationExport(palId: palId, palName: pal.name ?? "Pal"),
+                        preview: SharePreview("Conversation with \(pal.name ?? "Pal")")
+                    ) {
+                        Label("Export Conversation", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(model.items.isEmpty)
                 }
                 Button(role: .destructive) { showClearConfirmation = true } label: {
                     Label("Clear Conversation", systemImage: "trash")

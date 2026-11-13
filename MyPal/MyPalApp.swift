@@ -15,6 +15,7 @@ struct MyPalApp: App {
 
     init() {
         PalSeeder.run(in: PersistenceController.shared.viewContext)
+        MyPalShortcuts.updateAppShortcutParameters()
     }
 
     var body: some Scene {

@@ -17,7 +17,7 @@ struct PalRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            PalAvatar(name: pal.name ?? "", size: 48)
+            PalAvatar(pal: pal, size: 48)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline) {

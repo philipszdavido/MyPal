@@ -45,6 +45,32 @@ final class MessageStore: @unchecked Sendable {
         }
     }
 
+    /// Oldest-first slice of a conversation between two dates (exclusive), used by memory summarization.
+    func fetchMessages(palId: UUID, after start: Date, before end: Date, limit: Int) async throws -> [ChatMessage] {
+        try await context.perform { [context] () throws -> [ChatMessage] in
+            let request = Message.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "palId == %@ AND timestamp > %@ AND timestamp < %@",
+                palId.uuidString, start as NSDate, end as NSDate
+            )
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \Message.timestamp, ascending: true)]
+            request.fetchLimit = limit
+            request.returnsObjectsAsFaults = false
+
+            let objects = try context.fetch(request)
+            let result = objects.map { object in
+                ChatMessage(
+                    id: object.id ?? UUID(),
+                    role: object.isAi ? .assistant : .user,
+                    text: object.content ?? "",
+                    date: object.timestamp ?? .distantPast
+                )
+            }
+            context.reset()
+            return result
+        }
+    }
+
     func insert(_ message: ChatMessage, palId: UUID) {
         context.perform { [context] in
             let object = Message(context: context)

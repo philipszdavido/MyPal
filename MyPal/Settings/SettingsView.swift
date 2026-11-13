@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(ModelAvailability.self) private var availability
     @State private var showClearAll = false
+    @AppStorage(Preferences.showSuggestionsKey) private var showSuggestions = true
+    @AppStorage(Preferences.readRepliesAloudKey) private var readRepliesAloud = false
 
     private var versionString: String {
         let info = Bundle.main.infoDictionary
@@ -19,6 +21,15 @@ struct SettingsView: View {
                 } label: {
                     Label("Manage Pals", systemImage: "person.2")
                 }
+            }
+
+            Section {
+                Toggle("Suggested Replies", isOn: $showSuggestions)
+                Toggle("Read Replies Aloud", isOn: $readRepliesAloud)
+            } header: {
+                Text("Chat")
+            } footer: {
+                Text("Suggestions offer conversation starters and quick follow-ups. Say \u{201C}Ask a pal in MyPal\u{201D} to Siri to chat hands-free.")
             }
 
             Section {
@@ -43,7 +54,7 @@ struct SettingsView: View {
                 Task { await PalActions.clearAllConversations() }
             }
         } message: {
-            Text("Messages with every pal will be deleted. Your pals are kept. This can't be undone.")
+            Text("Messages and memories for every pal will be deleted. Your pals are kept. This can't be undone.")
         }
     }
 }
